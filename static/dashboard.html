@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>STEM market / control room</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #111111;
+      --muted: #737373;
+      --line: #deded9;
+      --paper: #f5f5f1;
+      --panel: #ffffff;
+      --acid: #d7ff3f;
+      --orange: #ff6b35;
+      --blue: #cfe7ff;
+      --mono: "JetBrains Mono", "IBM Plex Mono", monospace;
+      --sans: "IBM Plex Sans", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .app { display: grid; grid-template-columns: 252px minmax(0, 1fr); min-height: 100vh; }
+
+    .rail { display: flex; flex-direction: column; gap: 30px; padding: 28px 20px; border-right: 1px solid var(--ink); background: var(--panel); }
+    .mark { display: flex; align-items: flex-start; gap: 10px; }
+    .mark-dot { width: 18px; height: 18px; margin-top: 3px; background: var(--acid); border: 2px solid var(--ink); }
+    .eyebrow, .label, .mono { font-family: var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+    .eyebrow { font-size: 10px; font-weight: 700; }
+    .brand { margin: 2px 0 0; font-size: 17px; line-height: 1.05; letter-spacing: -.03em; }
+    .rail-section { display: grid; gap: 9px; }
+    .label { color: var(--muted); font-size: 10px; font-weight: 600; }
+    .field, .select { width: 100%; padding: 11px 12px; border: 1px solid var(--ink); border-radius: 0; background: var(--panel); color: var(--ink); outline: none; }
+    .field:focus, .select:focus { box-shadow: 3px 3px 0 var(--acid); }
+    .run { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 12px 13px; border: 1px solid var(--ink); background: var(--ink); color: #fff; font-weight: 600; }
+    .run:hover { background: var(--orange); border-color: var(--orange); }
+    .run[disabled] { cursor: wait; opacity: .6; }
+    .arrow { font-size: 18px; line-height: 12px; }
+    .rail-note { margin-top: auto; padding-top: 15px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .rail-note strong { color: var(--ink); }
+
+    .main { min-width: 0; padding: 30px clamp(20px, 4vw, 58px) 48px; }
+    .topline { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 32px; }
+    h1 { max-width: 650px; margin: 0; font-size: clamp(32px, 4.5vw, 62px); line-height: .96; letter-spacing: -.065em; }
+    .top-meta { display: grid; gap: 7px; justify-items: end; color: var(--muted); font-size: 11px; }
+    .status { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--acid); border: 1px solid var(--ink); }
+
+    .bento { display: grid; grid-template-columns: 1.35fr .8fr .8fr; grid-auto-rows: minmax(132px, auto); gap: 10px; }
+    .tile { position: relative; min-width: 0; padding: 20px; border: 1px solid var(--ink); background: var(--panel); overflow: hidden; }
+    .tile.dark { display: flex; flex-direction: column; justify-content: space-between; min-height: 276px; background: var(--ink); color: #fff; }
+    .tile.dark .label, .tile.dark .subtle { color: #a4a4a4; }
+    .tile.wide { grid-column: span 2; }
+    .tile h2 { margin: 10px 0 0; font-size: 38px; line-height: .95; letter-spacing: -.06em; }
+    .tile .subtle { color: var(--muted); font-size: 12px; }
+    .disciplines { display: flex; flex-wrap: wrap; gap: 7px; max-width: 440px; }
+    .discipline { padding: 7px 9px; border: 1px solid #444; color: #fff; font-family: var(--mono); font-size: 10px; }
+    .big-number { font-family: var(--mono); font-size: 34px; font-weight: 600; letter-spacing: -.08em; }
+    .meter { position: absolute; right: 18px; bottom: 20px; width: 45%; height: 7px; border: 1px solid var(--ink); background: var(--paper); }
+    .meter span { display: block; width: 68%; height: 100%; background: var(--orange); }
+
+    .results-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 42px 0 13px; }
+    .results-title { margin: 0; font-size: 22px; letter-spacing: -.04em; }
+    .search { width: min(320px, 45vw); padding: 10px 12px; border: 1px solid var(--line); background: transparent; outline: none; }
+    .search:focus { border-color: var(--ink); background: #fff; }
+    .jobs { display: grid; gap: 7px; }
+    .job { display: grid; grid-template-columns: minmax(190px, 1.4fr) minmax(140px, .75fr) 120px 112px 26px; align-items: center; gap: 16px; min-height: 76px; padding: 13px 15px; border: 1px solid var(--line); background: var(--panel); transition: transform .15s ease, border-color .15s ease; }
+    .job:hover { transform: translateX(4px); border-color: var(--ink); }
+    .job-title { margin: 0 0 5px; font-size: 15px; font-weight: 600; line-height: 1.15; }
+    .company, .job-location, .job-date { color: var(--muted); font-size: 12px; }
+    .category { display: inline-block; width: fit-content; padding: 5px 7px; background: var(--acid); color: var(--ink); font-family: var(--mono); font-size: 9px; font-weight: 700; text-transform: uppercase; }
+    .job-link { color: var(--ink); font-family: var(--mono); font-size: 18px; text-decoration: none; }
+    .empty { padding: 40px; border: 1px dashed var(--muted); color: var(--muted); text-align: center; }
+    .toast { position: fixed; right: 22px; bottom: 22px; max-width: 330px; padding: 12px 15px; border: 1px solid var(--ink); background: var(--acid); font-size: 13px; transform: translateY(120px); transition: transform .2s ease; }
+    .toast.show { transform: translateY(0); }
+
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .rail { border-right: 0; border-bottom: 1px solid var(--ink); padding: 18px 20px; }
+      .rail-section { grid-template-columns: 1fr 1fr; align-items: end; }
+      .rail-note { display: none; }
+      .bento { grid-template-columns: 1fr 1fr; }
+      .tile.dark, .tile.wide { grid-column: span 2; }
+      .job { grid-template-columns: minmax(170px, 1fr) 120px 30px; }
+      .job > :nth-child(2), .job > :nth-child(4) { display: none; }
+    }
+    @media (max-width: 560px) {
+      .main { padding: 24px 16px 36px; }
+      .topline, .results-head { display: grid; align-items: start; }
+      .top-meta { justify-items: start; }
+      .search { width: 100%; }
+      .rail-section { grid-template-columns: 1fr; }
+      .bento { grid-template-columns: 1fr; }
+      .tile.dark, .tile.wide { grid-column: span 1; }
+      .job { grid-template-columns: minmax(0, 1fr) 26px; }
+      .job > :nth-child(3) { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <div class="mark">
+        <div class="mark-dot"></div>
+        <div>
+          <div class="eyebrow">market / 01</div>
+          <div class="brand">STEM<br>control room</div>
+        </div>
+      </div>
+
+      <div class="rail-section">
+        <label class="label" for="category">Search scope</label>
+        <select class="select" id="category">
+          <option>All STEM</option>
+        </select>
+        <label class="label" for="location">Location</label>
+        <input class="field" id="location" value="lagos" aria-label="Location">
+        <label class="label" for="pages">Pages per query</label>
+        <input class="field" id="pages" type="number" min="1" max="3" value="1">
+        <button class="run" id="run" type="button">Run STEM sweep <span class="arrow">+</span></button>
+      </div>
+
+      <div class="rail-note">
+        <strong>Source signal</strong><br>
+        MyJobMag / Nigeria<br>
+        Sequential, deduplicated capture
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topline">
+        <div>
+          <div class="eyebrow">live labor market index</div>
+          <h1>Find the work<br>behind the signal.</h1>
+        </div>
+        <div class="top-meta">
+          <div class="status"><span class="status-dot"></span><span id="status">API online</span></div>
+          <div class="mono" id="updated">checking latest capture</div>
+        </div>
+      </header>
+
+      <section class="bento" aria-label="Market summary">
+        <article class="tile dark">
+          <div>
+            <div class="label">Current read</div>
+            <h2>STEM<br>is moving.</h2>
+          </div>
+          <div>
+            <div class="disciplines" id="discipline-tags"></div>
+            <div class="subtle" style="margin-top: 15px">Six demand bands. One searchable surface.</div>
+          </div>
+        </article>
+        <article class="tile">
+          <div class="label">Open signals</div>
+          <div class="big-number" id="total">--</div>
+          <div class="subtle">roles indexed</div>
+        </article>
+        <article class="tile">
+          <div class="label">Fresh today</div>
+          <div class="big-number" id="today">--</div>
+          <div class="subtle">new postings</div>
+        </article>
+        <article class="tile wide">
+          <div class="label">Coverage mix</div>
+          <div id="coverage" class="subtle" style="margin-top: 18px">Loading category coverage...</div>
+          <div class="meter"><span id="coverage-meter"></span></div>
+        </article>
+        <article class="tile">
+          <div class="label">Location</div>
+          <div class="big-number" id="location-read">LAG</div>
+          <div class="subtle">active search region</div>
+        </article>
+      </section>
+
+      <section class="results-head">
+        <div>
+          <div class="eyebrow">index / latest roles</div>
+          <h2 class="results-title">The board</h2>
+        </div>
+        <input class="search" id="search" type="search" placeholder="Search title or company...">
+      </section>
+      <section class="jobs" id="jobs" aria-live="polite">
+        <div class="empty">Loading the latest roles...</div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    const state = { jobs: [], categories: [] };
+    const $ = (id) => document.getElementById(id);
+
+    function showToast(message) {
+      const toast = $("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.setTimeout(() => toast.classList.remove("show"), 4200);
+    }
+
+    function formatDate(value) {
+      if (!value) return "date unknown";
+      return new Intl.DateTimeFormat("en", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+    }
+
+    function renderJobs() {
+      const query = $("search").value.trim().toLowerCase();
+      const category = $("category").value;
+      const jobs = state.jobs.filter((job) => {
+        const matchesCategory = category === "All STEM" || job.category === category;
+        const haystack = `${job.title} ${job.company}`.toLowerCase();
+        return matchesCategory && (!query || haystack.includes(query));
+      });
+      $("jobs").innerHTML = jobs.length ? jobs.map((job) => `
+        <article class="job">
+          <div><h3 class="job-title">${escapeHtml(job.title)}</h3><div class="company">${escapeHtml(job.company || "Company not listed")}</div></div>
+          <div class="job-location">${escapeHtml(job.location || "Nigeria")}</div>
+          <div><span class="category">${escapeHtml(job.category || "Data & AI")}</span></div>
+          <div class="job-date">${formatDate(job.date_posted)}</div>
+          <a class="job-link" href="${escapeAttribute(job.url)}" target="_blank" rel="noreferrer" aria-label="Open job listing">+</a>
+        </article>`).join("") : '<div class="empty">No roles match this view yet.</div>';
+    }
+
+    function renderSummary() {
+      const counts = state.jobs.reduce((map, job) => {
+        map[job.category || "Data & AI"] = (map[job.category || "Data & AI"] || 0) + 1;
+        return map;
+      }, {});
+      const today = new Date().toISOString().slice(0, 10);
+      $("total").textContent = state.jobs.length;
+      $("today").textContent = state.jobs.filter((job) => job.date_posted === today).length;
+      $("location-read").textContent = $("location").value.slice(0, 3).toUpperCase();
+      $("coverage").textContent = Object.entries(counts).map(([name, count]) => `${name} ${count}`).join("  /  ") || "No indexed roles yet";
+      const max = Math.max(...Object.values(counts), 1);
+      $("coverage-meter").style.width = `${Math.min(100, (max / Math.max(state.jobs.length, 1)) * 100)}%`;
+      $("discipline-tags").innerHTML = state.categories.map((item) => `<span class="discipline">${escapeHtml(item.name)}</span>`).join("");
+    }
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
+    }
+
+    function escapeAttribute(value) {
+      return escapeHtml(value).replace(/`/g, "&#96;");
+    }
+
+    async function load() {
+      try {
+        const [jobsResponse, categoriesResponse] = await Promise.all([
+          fetch("/api/jobs?limit=500"),
+          fetch("/api/categories")
+        ]);
+        if (!jobsResponse.ok || !categoriesResponse.ok) throw new Error("API request failed");
+        state.jobs = await jobsResponse.json();
+        state.categories = await categoriesResponse.json();
+        const select = $("category");
+        select.innerHTML = '<option>All STEM</option>' + state.categories.map((item) => `<option>${escapeHtml(item.name)}</option>`).join("");
+        renderSummary();
+        renderJobs();
+        $("updated").textContent = `last checked ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+      } catch (error) {
+        $("status").textContent = "API unavailable";
+        $("jobs").innerHTML = '<div class="empty">Could not reach the pipeline API.</div>';
+      }
+    }
+
+    async function runSweep() {
+      const button = $("run");
+      const params = new URLSearchParams({ pages: $("pages").value, location: $("location").value });
+      if ($("category").value !== "All STEM") params.set("category", $("category").value);
+      button.disabled = true;
+      button.firstChild.textContent = "Sweeping... ";
+      try {
+        const response = await fetch(`/api/scrape?${params}`, { method: "POST" });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || "Sweep failed");
+        showToast(`${result.parsed} parsed / ${result.inserted} new / ${result.skipped} already indexed`);
+        await load();
+      } catch (error) {
+        showToast(error.message);
+      } finally {
+        button.disabled = false;
+        button.firstChild.textContent = "Run STEM sweep ";
+      }
+    }
+
+    $("search").addEventListener("input", renderJobs);
+    $("category").addEventListener("change", renderJobs);
+    $("location").addEventListener("input", () => { $("location-read").textContent = $("location").value.slice(0, 3).toUpperCase(); });
+    $("run").addEventListener("click", runSweep);
+    load();
+  </script>
+</body>
+</html>

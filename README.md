@@ -1,25 +1,26 @@
 # DA Job Market Pipeline
 
-A small job-market data pipeline that collects Data Analyst postings from
+A small job-market data pipeline that collects STEM job postings from
 [MyJobMag](https://www.myjobmag.com), extracts useful fields and skill flags,
 and stores the results in SQLite or PostgreSQL.
 
 ## Features
 
-- Scrapes job listings and detail pages for a keyword and location.
+- Scrapes Data & AI, Software, Cybersecurity, Cloud & DevOps, QA and Engineering roles.
 - Extracts title, company, location, description and posting date.
 - Detects SQL, Python, Tableau and Power BI keywords.
 - Deduplicates records by job URL.
-- Provides a FastAPI service for querying jobs and triggering scrapes.
+- Provides a FastAPI service and responsive dashboard for querying jobs and triggering scrapes.
 - Supports scheduled scraping through GitHub Actions and a Render deployment.
 
 ## Project layout
 
 ```text
 .
-├── app.py                         # FastAPI application
+├── app.py                         # FastAPI application and API routes
 ├── data/raw/                      # Sample HTML fixtures
 ├── requirements.txt
+├── static/dashboard.html          # Responsive STEM dashboard
 ├── src/job_pipeline/db.py         # SQLAlchemy model and database setup
 ├── src/job_pipeline/scraper.py    # Fetching, parsing and persistence
 └── .github/workflows/scrape.yml   # Daily Render trigger
@@ -83,22 +84,38 @@ Returns a simple service status response.
 GET /api/jobs?limit=100
 ```
 
-Returns the newest saved postings. `limit` accepts values from 1 to 500.
+Returns the newest saved postings. `limit` accepts values from 1 to 500. Use
+`category` to filter by STEM family and `q` to search titles or companies.
+
+```http
+GET /api/jobs?category=Software&q=engineer&limit=50
+```
+
+### STEM categories
+
+```http
+GET /api/categories
+```
+
+Returns the configured STEM families and their search terms.
 
 ### Trigger a scrape
 
 ```bash
 curl -X POST \
-	"http://127.0.0.1:8000/api/scrape?pages=1&keyword=data%20analyst&location=lagos"
+  "http://127.0.0.1:8000/api/scrape?pages=1&location=lagos"
 ```
 
-The response contains the number of records parsed, inserted and skipped as
-duplicates. `pages` accepts values from 1 to 10.
+Without a `keyword`, the endpoint runs the full STEM sweep. Pass `category` to
+run one family or pass `keyword` for a custom single query. The response
+contains the number of records parsed, inserted and skipped as duplicates.
+`pages` accepts values from 1 to 10.
 
 ### Dashboard
 
-`GET /` serves `static/dashboard.html` when that file is present. Otherwise it
-returns a basic service status response.
+`GET /` serves the dashboard. It provides category and location controls, a
+STEM sweep action, coverage metrics, title/company search and direct links to
+the source listings.
 
 ## Deployment
 

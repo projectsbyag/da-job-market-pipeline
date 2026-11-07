@@ -1,7 +1,7 @@
 import re
 import time
 from datetime import datetime, date
-from urllib.parse import urljoin
+from urllib.parse import quote_plus, urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -16,6 +16,15 @@ SKILL_KEYWORDS = {
     "has_python":  ["python", "pandas", "numpy"],
     "has_tableau": ["tableau"],
     "has_powerbi": ["power bi", "powerbi"],
+}
+
+STEM_CATEGORIES = {
+    "Data & AI": ["data analyst", "data scientist", "machine learning"],
+    "Software": ["software engineer", "software developer", "frontend developer", "backend developer"],
+    "Cybersecurity": ["cybersecurity", "security analyst", "information security"],
+    "Cloud & DevOps": ["devops", "cloud engineer", "site reliability engineer"],
+    "QA & Testing": ["qa engineer", "quality assurance", "test engineer"],
+    "Engineering": ["electrical engineer", "mechanical engineer", "civil engineer", "biomedical engineer"],
 }
 
 LOCATION_RE = re.compile(r"\bin\s+([A-Z][a-zA-Z]+(?:,\s*[A-Z][a-zA-Z]+)?)", re.IGNORECASE)
@@ -85,11 +94,16 @@ def detect_skills(text: str) -> dict:
     return {k: any(kw in low for kw in v) for k, v in SKILL_KEYWORDS.items()}
 
 
-def scrape_jobs(keyword: str = "data analyst", location: str = "lagos", pages: int = 1) -> list[dict]:
+def scrape_jobs(
+    keyword: str = "data analyst",
+    location: str = "lagos",
+    pages: int = 1,
+    category: str = "Data & AI",
+) -> list[dict]:
     """Orchestrate: listing pages → detail pages → merged records."""
     all_jobs = []
     for page in range(1, pages + 1):
-        url = f"{BASE}/search/jobs?q={keyword.replace(' ', '+')}&location={location}&page={page}"
+        url = f"{BASE}/search/jobs?q={quote_plus(keyword)}&location={quote_plus(location)}&page={page}"
         print(f"[listing] page {page}: {url}")
         html = fetch(url)
         if not html:
@@ -106,8 +120,22 @@ def scrape_jobs(keyword: str = "data analyst", location: str = "lagos", pages: i
                 continue
             detail = parse_detail(detail_html)
             skills = detect_skills(detail["description"])
-            all_jobs.append({**card, **detail, **skills})
+            all_jobs.append({**card, **detail, **skills, "category": category})
             time.sleep(0.5)  # polite crawling
+    return all_jobs
+
+
+def scrape_stem_jobs(location: str = "lagos", pages: int = 1, categories: list[str] | None = None) -> list[dict]:
+    """Search the configured STEM families and deduplicate jobs by URL."""
+    selected = categories or list(STEM_CATEGORIES)
+    all_jobs = []
+    seen_urls = set()
+    for category in selected:
+        for keyword in STEM_CATEGORIES.get(category, []):
+            for job in scrape_jobs(keyword, location, pages, category):
+                if job["url"] not in seen_urls:
+                    seen_urls.add(job["url"])
+                    all_jobs.append(job)
     return all_jobs
 
 
@@ -126,6 +154,7 @@ def save_jobs(jobs: list[dict]) -> tuple[int, int]:
                 location=j["location"][:255],
                 date_posted=j["date_posted"],
                 url=j["url"][:500],
+                category=j.get("category", "Data & AI")[:80],
                 description=j["description"],
                 has_sql=j["has_sql"],
                 has_python=j["has_python"],
@@ -140,8 +169,8 @@ def save_jobs(jobs: list[dict]) -> tuple[int, int]:
 
 
 if __name__ == "__main__":
-    print("=== Scraping 1 page and saving to DB ===")
-    jobs = scrape_jobs(keyword="data analyst", location="lagos", pages=1)
+    print("=== Scraping STEM jobs and saving to DB ===")
+    jobs = scrape_stem_jobs(location="lagos", pages=1)
     print(f"Parsed: {len(jobs)}")
     inserted, skipped = save_jobs(jobs)
     print(f"Inserted: {inserted}  |  Skipped (already in DB): {skipped}")

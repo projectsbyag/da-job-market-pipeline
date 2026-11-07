@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, Date, Text
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, Date, Text, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from dotenv import load_dotenv
 
@@ -31,6 +31,7 @@ class JobPosting(Base):
     location = Column(String)
     date_posted = Column(Date)
     url = Column(String, unique=True)
+    category = Column(String(80))
     description = Column(Text)
     has_sql = Column(Boolean, default=False)
     has_python = Column(Boolean, default=False)
@@ -40,6 +41,10 @@ class JobPosting(Base):
 
 def init_db():
     Base.metadata.create_all(engine)
+    columns = {column["name"] for column in inspect(engine).get_columns("job_postings")}
+    if "category" not in columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE job_postings ADD COLUMN category VARCHAR(80)"))
 
 
 if __name__ == "__main__":
