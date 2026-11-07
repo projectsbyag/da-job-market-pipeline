@@ -3,7 +3,7 @@ from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from src.job_pipeline.db import JobPosting, Session, init_db
 from src.job_pipeline.scraper import STEM_CATEGORIES, save_jobs, scrape_jobs, scrape_stem_jobs
@@ -26,6 +26,11 @@ def dashboard():
     if STATIC_INDEX.exists():
         return FileResponse(STATIC_INDEX)
     return {"service": "da-job-market-pipeline", "status": "ok"}
+
+
+@app.head("/", include_in_schema=False)
+def dashboard_head():
+    return Response(status_code=200)
 
 
 @app.get("/health")
