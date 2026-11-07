@@ -35,7 +35,7 @@ def parse_listing(html: str) -> list[dict]:
     """Return [{title, company, url}, ...] from a search results page."""
     soup = BeautifulSoup(html, "html.parser")
     jobs = []
-    for card in soup.select("ul.job-list li.mag-b h2 a"):
+    for card in soup.select("li.mag-b h2 a"):
         href = card.get("href", "")
         text = card.get_text(" ", strip=True)
         # "Data Analyst at Ascentech Services Limited"
