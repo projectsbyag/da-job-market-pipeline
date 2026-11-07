@@ -6,7 +6,14 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, Response
 
 from src.job_pipeline.db import JobPosting, Session, init_db
-from src.job_pipeline.scraper import STEM_CATEGORIES, save_jobs, scrape_jobs, scrape_stem_jobs
+from src.job_pipeline.scraper import (
+    INTERNATIONAL_CATEGORY,
+    STEM_CATEGORIES,
+    save_jobs,
+    scrape_international_jobs,
+    scrape_jobs,
+    scrape_stem_jobs,
+)
 
 
 STATIC_INDEX = Path(__file__).parent / "static" / "dashboard.html"
@@ -40,7 +47,9 @@ def health():
 
 @app.get("/api/categories")
 def categories():
-    return [{"name": name, "queries": queries} for name, queries in STEM_CATEGORIES.items()]
+    values = [{"name": name, "queries": queries} for name, queries in STEM_CATEGORIES.items()]
+    values.append({"name": INTERNATIONAL_CATEGORY, "queries": ["Arbeitnow remote STEM feed"]})
+    return values
 
 
 @app.get("/api/jobs")
@@ -73,6 +82,8 @@ def scrape(
     try:
         if keyword:
             parsed = scrape_jobs(keyword=keyword, location=location, pages=pages, category=category or "Data & AI")
+        elif category == INTERNATIONAL_CATEGORY:
+            parsed = scrape_international_jobs()
         else:
             selected = [category] if category and category != "All STEM" else None
             parsed = scrape_stem_jobs(location=location, pages=pages, categories=selected)

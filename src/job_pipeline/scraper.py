@@ -1,6 +1,6 @@
 import re
 import time
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from urllib.parse import quote_plus, urljoin
 
 import requests
@@ -9,7 +9,13 @@ from bs4 import BeautifulSoup
 from src.job_pipeline.db import Session, JobPosting
 
 BASE = "https://www.myjobmag.com"
+ARBEITNOW_API = "https://www.arbeitnow.com/api/job-board-api"
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; da-job-pipeline/1.0)"}
+INTERNATIONAL_CATEGORY = "International / Remote"
+INTERNATIONAL_TERMS = (
+    "software", "developer", "engineer", "data", "machine learning", "devops",
+    "security", "quality assurance", "qa ", "cloud", "analyst", "scientist",
+)
 
 SKILL_KEYWORDS = {
     "has_sql":     ["sql", "mysql", "postgresql", "postgres"],
@@ -37,6 +43,16 @@ def fetch(url: str) -> str | None:
             return r.text
     except requests.RequestException as e:
         print(f"  [fetch error] {url}: {e}")
+    return None
+
+
+def fetch_json(url: str) -> dict | None:
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=20)
+        if response.status_code == 200:
+            return response.json()
+    except (requests.RequestException, ValueError) as error:
+        print(f"  [json fetch error] {url}: {error}")
     return None
 
 
@@ -126,7 +142,7 @@ def scrape_jobs(
 
 
 def scrape_stem_jobs(location: str = "lagos", pages: int = 1, categories: list[str] | None = None) -> list[dict]:
-    """Search the configured STEM families and deduplicate jobs by URL."""
+    """Search local STEM families plus international remote STEM roles."""
     selected = categories or list(STEM_CATEGORIES)
     all_jobs = []
     seen_urls = set()
@@ -136,7 +152,41 @@ def scrape_stem_jobs(location: str = "lagos", pages: int = 1, categories: list[s
                 if job["url"] not in seen_urls:
                     seen_urls.add(job["url"])
                     all_jobs.append(job)
+    if categories is None:
+        for job in scrape_international_jobs():
+            if job["url"] not in seen_urls:
+                seen_urls.add(job["url"])
+                all_jobs.append(job)
     return all_jobs
+
+
+def scrape_international_jobs() -> list[dict]:
+    """Fetch remote STEM jobs from Arbeitnow's public international feed."""
+    payload = fetch_json(ARBEITNOW_API) or {}
+    jobs = []
+    for item in payload.get("data", []):
+        title = item.get("title", "").strip()
+        description = BeautifulSoup(item.get("description", ""), "html.parser").get_text(" ", strip=True)
+        haystack = f"{title} {description}".lower()
+        if not item.get("remote") or not any(term in haystack for term in INTERNATIONAL_TERMS):
+            continue
+        created_at = item.get("created_at")
+        posted = date.today()
+        if isinstance(created_at, (int, float)):
+            posted = datetime.fromtimestamp(created_at, tz=timezone.utc).date()
+        skills = detect_skills(description)
+        jobs.append({
+            "title": title,
+            "company": item.get("company_name", "").strip(),
+            "url": item.get("url", ""),
+            "description": description,
+            "location": item.get("location") or "Remote / International",
+            "date_posted": posted,
+            "category": INTERNATIONAL_CATEGORY,
+            **skills,
+        })
+    print(f"[international] found {len(jobs)} remote STEM roles")
+    return jobs
 
 
 def save_jobs(jobs: list[dict]) -> tuple[int, int]:

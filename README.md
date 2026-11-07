@@ -7,6 +7,7 @@ and stores the results in SQLite or PostgreSQL.
 ## Features
 
 - Scrapes Data & AI, Software, Cybersecurity, Cloud & DevOps, QA and Engineering roles.
+- Adds remote international STEM roles from the public Arbeitnow job feed.
 - Extracts title, company, location, description and posting date.
 - Detects SQL, Python, Tableau and Power BI keywords.
 - Deduplicates records by job URL.
@@ -145,5 +146,7 @@ retries transient failures.
 	delay between requests.
 - MyJobMag HTML structure changes may require updates to the selectors in
 	`src/job_pipeline/scraper.py`.
+- The international feed is filtered to remote roles with STEM-related terms;
+	its availability depends on the public Arbeitnow API.
 - Use the included sample HTML files when developing parser changes so live
 	requests are not required for every test.
