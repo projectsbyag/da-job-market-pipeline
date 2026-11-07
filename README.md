@@ -6,6 +6,8 @@ A small job-market data pipeline that collects STEM job postings from
 [MyJobMag](https://www.myjobmag.com), extracts useful fields and skill flags,
 and stores the results in SQLite or PostgreSQL.
 
+**[Live demo](https://da-job-market-pipeline.onrender.com)**
+
 ## Features
 
 - Scrapes Data & AI, Software, Cybersecurity, Cloud & DevOps, QA and Engineering roles.
