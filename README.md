@@ -1,3 +1,5 @@
+![STEM labor market dashboard](docs/dashboard.png)
+
 # DA Job Market Pipeline
 
 A small job-market data pipeline that collects STEM job postings from
@@ -113,8 +115,6 @@ contains the number of records parsed, inserted and skipped as duplicates.
 `pages` accepts values from 1 to 10.
 
 ### Dashboard
-
-![STEM labor market dashboard](docs/dashboard.png)
 
 `GET /` serves the dashboard. It provides category and location controls, a
 STEM sweep action, coverage metrics, title/company search and direct links to
