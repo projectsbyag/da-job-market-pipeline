@@ -114,6 +114,8 @@ contains the number of records parsed, inserted and skipped as duplicates.
 
 ### Dashboard
 
+![STEM labor market dashboard](docs/dashboard.png)
+
 `GET /` serves the dashboard. It provides category and location controls, a
 STEM sweep action, coverage metrics, title/company search and direct links to
 the source listings.
