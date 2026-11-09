@@ -11,7 +11,6 @@ from src.job_pipeline.db import Session, JobPosting
 BASE = "https://www.myjobmag.com"
 ARBEITNOW_API = "https://www.arbeitnow.com/api/job-board-api"
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; da-job-pipeline/1.0)"}
-INTERNATIONAL_CATEGORY = "International / Remote"
 INTERNATIONAL_TERMS = (
     "software", "developer", "engineer", "data", "machine learning", "devops",
     "security", "quality assurance", "qa ", "cloud", "analyst", "scientist",
@@ -31,6 +30,15 @@ STEM_CATEGORIES = {
     "Cloud & DevOps": ["devops", "cloud engineer", "site reliability engineer"],
     "QA & Testing": ["qa engineer", "quality assurance", "test engineer"],
     "Engineering": ["electrical engineer", "mechanical engineer", "civil engineer", "biomedical engineer"],
+}
+
+CATEGORY_TERMS = {
+    "Cybersecurity": ("cyber", "security", "soc analyst", "penetration", "infosec"),
+    "Cloud & DevOps": ("devops", "cloud", "site reliability", "sre", "infrastructure", "platform engineer"),
+    "QA & Testing": ("quality assurance", "qa ", "test engineer", "software tester", "testing"),
+    "Data & AI": ("data", "machine learning", "artificial intelligence", " ai ", "analyst", "scientist"),
+    "Software": ("software", "developer", "frontend", "backend", "full stack", "web engineer"),
+    "Engineering": ("engineer", "engineering", "electrical", "mechanical", "civil", "biomedical"),
 }
 
 LOCATION_RE = re.compile(r"\bin\s+([A-Z][a-zA-Z]+(?:,\s*[A-Z][a-zA-Z]+)?)", re.IGNORECASE)
@@ -110,6 +118,19 @@ def detect_skills(text: str) -> dict:
     return {k: any(kw in low for kw in v) for k, v in SKILL_KEYWORDS.items()}
 
 
+def classify_job_category(title: str, description: str = "") -> str:
+    """Assign a job to one of the configured STEM categories."""
+    title_text = f" {title.lower()} "
+    description_text = f" {description.lower()} "
+    for category, terms in CATEGORY_TERMS.items():
+        if any(term in title_text for term in terms):
+            return category
+    for category, terms in CATEGORY_TERMS.items():
+        if any(term in description_text for term in terms):
+            return category
+    return "Engineering"
+
+
 def scrape_jobs(
     keyword: str = "data analyst",
     location: str = "lagos",
@@ -182,7 +203,7 @@ def scrape_international_jobs() -> list[dict]:
             "description": description,
             "location": item.get("location") or "Remote / International",
             "date_posted": posted,
-            "category": INTERNATIONAL_CATEGORY,
+            "category": classify_job_category(title, description),
             **skills,
         })
     print(f"[international] found {len(jobs)} remote STEM roles")

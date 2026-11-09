@@ -7,10 +7,9 @@ from fastapi.responses import FileResponse, Response
 
 from src.job_pipeline.db import JobPosting, Session, init_db
 from src.job_pipeline.scraper import (
-    INTERNATIONAL_CATEGORY,
     STEM_CATEGORIES,
+    classify_job_category,
     save_jobs,
-    scrape_international_jobs,
     scrape_jobs,
     scrape_stem_jobs,
 )
@@ -47,9 +46,7 @@ def health():
 
 @app.get("/api/categories")
 def categories():
-    values = [{"name": name, "queries": queries} for name, queries in STEM_CATEGORIES.items()]
-    values.append({"name": INTERNATIONAL_CATEGORY, "queries": ["Arbeitnow remote STEM feed"]})
-    return values
+    return [{"name": name, "queries": queries} for name, queries in STEM_CATEGORIES.items()]
 
 
 @app.get("/api/jobs")
@@ -82,8 +79,6 @@ def scrape(
     try:
         if keyword:
             parsed = scrape_jobs(keyword=keyword, location=location, pages=pages, category=category or "Data & AI")
-        elif category == INTERNATIONAL_CATEGORY:
-            parsed = scrape_international_jobs()
         else:
             selected = [category] if category and category != "All STEM" else None
             parsed = scrape_stem_jobs(location=location, pages=pages, categories=selected)
@@ -100,6 +95,10 @@ def scrape(
 
 
 def _serialize_job(record: JobPosting) -> dict:
+    category = record.category if record.category in STEM_CATEGORIES else classify_job_category(
+        record.title or "",
+        record.description or "",
+    )
     return {
         "id": record.id,
         "title": record.title,
@@ -107,7 +106,7 @@ def _serialize_job(record: JobPosting) -> dict:
         "location": record.location,
         "date_posted": record.date_posted.isoformat() if isinstance(record.date_posted, date) else None,
         "url": record.url,
-        "category": record.category or "Data & AI",
+        "category": category,
         "description": record.description,
         "has_sql": record.has_sql,
         "has_python": record.has_python,
