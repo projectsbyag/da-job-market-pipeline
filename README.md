@@ -123,9 +123,10 @@ STEM sweep action, coverage metrics, title/company search and direct links to
 the source listings.
 
 The dashboard is designed as a STEM labor-market control room: choose a search
-scope and location, run a sweep, then review open signals, fresh postings and
-coverage across Data & AI, Software, Cybersecurity, Cloud & DevOps, QA &
-Testing, Engineering and international remote roles.
+scope and location, run a sweep, then review open signals, fresh postings,
+responsive Chart.js views of category demand and skill signals, and coverage
+across Data & AI, Software, Cybersecurity, Cloud & DevOps, QA & Testing,
+Engineering and international remote roles.
 
 ## Deployment
 

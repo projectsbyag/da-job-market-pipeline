@@ -64,6 +64,13 @@
     .meter { position: absolute; right: 18px; bottom: 20px; width: 45%; height: 7px; border: 1px solid var(--ink); background: var(--paper); }
     .meter span { display: block; width: 68%; height: 100%; background: var(--orange); }
 
+    .insights { display: grid; grid-template-columns: 1.15fr .85fr; gap: 10px; margin-top: 10px; }
+    .chart-card { min-width: 0; padding: 20px; border: 1px solid var(--ink); background: var(--panel); }
+    .chart-heading { display: flex; align-items: end; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+    .chart-title { margin: 8px 0 0; font-size: 21px; line-height: 1; letter-spacing: -.05em; }
+    .chart-wrap { position: relative; height: 230px; }
+    .chart-empty { display: grid; height: 100%; place-items: center; border: 1px dashed var(--line); color: var(--muted); font-size: 12px; }
+
     .results-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 42px 0 13px; }
     .results-title { margin: 0; font-size: 22px; letter-spacing: -.04em; }
     .search { width: min(320px, 45vw); padding: 10px 12px; border: 1px solid var(--line); background: transparent; outline: none; }
@@ -86,6 +93,7 @@
       .rail-note { display: none; }
       .bento { grid-template-columns: 1fr 1fr; }
       .tile.dark, .tile.wide { grid-column: span 2; }
+      .insights { grid-template-columns: 1fr; }
       .job { grid-template-columns: minmax(170px, 1fr) 120px 30px; }
       .job > :nth-child(2), .job > :nth-child(4) { display: none; }
     }
@@ -177,6 +185,29 @@
         </article>
       </section>
 
+      <section class="insights" aria-label="Market insights">
+        <article class="chart-card">
+          <div class="chart-heading">
+            <div>
+              <div class="eyebrow">signal / discipline</div>
+              <h2 class="chart-title">Where demand is landing</h2>
+            </div>
+            <div class="label">indexed roles</div>
+          </div>
+          <div class="chart-wrap"><canvas id="category-chart" aria-label="Jobs by STEM category"></canvas></div>
+        </article>
+        <article class="chart-card">
+          <div class="chart-heading">
+            <div>
+              <div class="eyebrow">signal / skills</div>
+              <h2 class="chart-title">Tools in the brief</h2>
+            </div>
+            <div class="label">keyword flags</div>
+          </div>
+          <div class="chart-wrap"><canvas id="skills-chart" aria-label="Job postings mentioning key skills"></canvas></div>
+        </article>
+      </section>
+
       <section class="results-head">
         <div>
           <div class="eyebrow">index / latest roles</div>
@@ -191,9 +222,11 @@
   </div>
   <div class="toast" id="toast" role="status"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script>
-    const state = { jobs: [], categories: [] };
+    const state = { jobs: [], categories: [], charts: {} };
     const $ = (id) => document.getElementById(id);
+    const chartColors = ["#d7ff3f", "#ff6b35", "#cfe7ff", "#111111", "#9d9d97", "#737373", "#e5e5df"];
 
     function showToast(message) {
       const toast = $("toast");
@@ -240,6 +273,74 @@
       $("discipline-tags").innerHTML = state.categories.map((item) => `<span class="discipline">${escapeHtml(item.name)}</span>`).join("");
     }
 
+    function selectedJobs() {
+      const category = $("category").value;
+      return state.jobs.filter((job) => category === "All STEM" || job.category === category);
+    }
+
+    function renderCharts() {
+      if (typeof Chart === "undefined") return;
+      const jobs = selectedJobs();
+      const categoryCounts = jobs.reduce((counts, job) => {
+        const category = job.category || "Data & AI";
+        counts[category] = (counts[category] || 0) + 1;
+        return counts;
+      }, {});
+      const skillCounts = ["SQL", "Python", "Tableau", "Power BI"].map((skill) => ({
+        skill,
+        count: jobs.filter((job) => job[`has_${skill.toLowerCase().replace(" ", "")}`]).length
+      }));
+
+      Object.values(state.charts).forEach((chart) => chart.destroy());
+      state.charts.category = new Chart($("category-chart"), {
+        type: "bar",
+        data: {
+          labels: Object.keys(categoryCounts),
+          datasets: [{
+            data: Object.values(categoryCounts),
+            backgroundColor: chartColors,
+            borderColor: "#111111",
+            borderWidth: 1,
+            borderRadius: 0,
+            barThickness: 18
+          }]
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { displayColors: false } },
+          scales: {
+            x: { beginAtZero: true, ticks: { precision: 0, color: "#737373", font: { family: "JetBrains Mono", size: 10 } }, grid: { color: "#deded9" }, border: { display: false } },
+            y: { ticks: { color: "#111111", font: { family: "IBM Plex Sans", size: 11 } }, grid: { display: false }, border: { display: false } }
+          }
+        }
+      });
+      state.charts.skills = new Chart($("skills-chart"), {
+        type: "bar",
+        data: {
+          labels: skillCounts.map(({ skill }) => skill),
+          datasets: [{
+            data: skillCounts.map(({ count }) => count),
+            backgroundColor: ["#111111", "#ff6b35", "#cfe7ff", "#d7ff3f"],
+            borderColor: "#111111",
+            borderWidth: 1,
+            borderRadius: 0,
+            barThickness: 28
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { displayColors: false } },
+          scales: {
+            x: { ticks: { color: "#111111", font: { family: "IBM Plex Sans", size: 11 } }, grid: { display: false }, border: { display: false } },
+            y: { beginAtZero: true, ticks: { precision: 0, color: "#737373", font: { family: "JetBrains Mono", size: 10 } }, grid: { color: "#deded9" }, border: { display: false } }
+          }
+        }
+      });
+    }
+
     function escapeHtml(value) {
       return String(value || "").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
     }
@@ -260,6 +361,7 @@
         const select = $("category");
         select.innerHTML = '<option>All STEM</option>' + state.categories.map((item) => `<option>${escapeHtml(item.name)}</option>`).join("");
         renderSummary();
+        renderCharts();
         renderJobs();
         $("updated").textContent = `last checked ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
       } catch (error) {
@@ -289,7 +391,7 @@
     }
 
     $("search").addEventListener("input", renderJobs);
-    $("category").addEventListener("change", renderJobs);
+    $("category").addEventListener("change", () => { renderJobs(); renderCharts(); });
     $("location").addEventListener("input", () => { $("location-read").textContent = $("location").value.slice(0, 3).toUpperCase(); });
     $("run").addEventListener("click", runSweep);
     load();
